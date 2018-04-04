@@ -58,6 +58,10 @@ def buildSim(cppFlags, dir, type, pgo=None):
         env['CC'] = 'icc'
         env['CXX'] = 'icpc -ipo'
 
+    # Fix C++ ABI for existing Pin kits (up to including 3.6)
+    if not useIcc:
+        env['CXX'] += ' -fabi-version=2'
+
     # Required paths
     if "PINPATH" in os.environ:
         PINPATH = os.environ["PINPATH"]
