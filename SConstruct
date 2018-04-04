@@ -4,6 +4,23 @@ from os.path import join as joinpath
 useIcc = False
 #useIcc = True
 
+
+def CheckPKGConfig(context, version):
+    context.Message('Checking for pkg-config... ')
+    ret = context.TryAction(
+        'pkg-config --atleast-pkgconfig-version=%s' % version)[0]
+    context.Result(ret)
+    return ret
+
+
+def CheckPKG(context, name):
+    context.Message('Checking for %s... ' % name)
+    ret = context.TryAction(
+        'pkg-config --exists \'%s\'' % name)[0]
+    context.Result(ret)
+    return ret
+
+
 def buildSim(cppFlags, dir, type, pgo=None):
     ''' Build the simulator with a specific base buid dir and config type'''
 
@@ -21,6 +38,14 @@ def buildSim(cppFlags, dir, type, pgo=None):
     else:
         env.Command(versionFile, allSrcs + ["SConstruct"],
             'printf "#define ZSIM_BUILDDATE \\"`date`\\"\\n#define ZSIM_BUILDVERSION \\"no git repo\\"" >>' + versionFile)
+
+    pkgcfg = Configure(env, custom_tests={
+        'CheckPKGConfig': CheckPKGConfig,
+        'CheckPKG': CheckPKG
+    })
+    if not pkgcfg.CheckPKGConfig('0.15.0'):
+        print('pkg-config >= 0.15.0 not found.')
+        sys.exit(1)
 
     # Parallel builds?
     #env.SetOption('num_jobs', 32)
@@ -143,6 +168,11 @@ def buildSim(cppFlags, dir, type, pgo=None):
     env["CPPPATH"] += ["."]
 
     # HDF5
+    if not pkgcfg.CheckPKG('hdf5 >= 1.8.4'):
+        print('hdf5 >= 1.8.4 not found.')
+        sys.exit(1)
+
+    env.ParseConfig('pkg-config --cflags --libs hdf5')
     env["PINLIBS"] += ["hdf5", "hdf5_hl"]
 
     # Harness needs these defined
